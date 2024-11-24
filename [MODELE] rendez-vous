@@ -1,0 +1,63 @@
+package Modele;
+
+import java.time.LocalDateTime;
+
+
+public class RendezVous {
+    private int idRendezVous;
+    private String date;
+    private String motif;
+    private int idMedecin;
+    private int idPatient;
+
+    // Constructeur
+    public RendezVous(int idRendezVous, String date, String motif, int idMedecin, int idPatient) { 
+        this.idRendezVous = idRendezVous;
+        this.date = date;
+        this.motif = motif;
+        this.idMedecin = idMedecin;
+        this.idPatient = idPatient;
+    }
+
+    // Getters et Setters
+    public int getIdRendezVous() {
+        return idRendezVous;
+    }
+
+    public void setIdRendezVous(int idRendezVous) {
+        this.idRendezVous = idRendezVous;
+    }
+
+    public String getDate() {
+        return date;
+    }
+
+    public void setDate(String date) {
+        this.date = date;
+    }
+
+    public String getMotif() {
+        return motif;
+    }
+
+    public void setMotif(String motif) {
+        this.motif = motif;
+    }
+
+    public int getIdMedecin() {
+        return idMedecin;
+    }
+
+    public void setIdMedecin(int idMedecin) {
+        this.idMedecin = idMedecin;
+    }
+
+    public int getIdPatient() {
+        return idPatient;
+    }
+
+    public void setIdPatient(int idPatient) {
+        this.idPatient = idPatient;
+    }
+}
+

@@ -1,0 +1,686 @@
+package Vue.Patient;
+
+import DAO.DbConfigDAO;
+import Vue.Admin.admin;
+
+
+import javax.swing.*;
+import javax.swing.table.DefaultTableModel;
+import java.awt.event.ActionEvent;
+import java.sql.*;
+ 
+public class RDVous extends javax.swing.JFrame {
+
+    PreparedStatement pst;
+    ResultSet rs;
+    Connection con;
+    public RDVous() {
+        super("Prise de rendez-vous");
+        initComponents();
+        chargerMedecins();
+        table();
+
+    }
+
+
+    @SuppressWarnings("unchecked")
+
+    private void initComponents() {
+
+        jPanel1 = new javax.swing.JPanel();
+        jScrollPane1 = new javax.swing.JScrollPane();
+        jTable1 = new javax.swing.JTable();
+        jPanel2 = new javax.swing.JPanel();
+        ajouter = new javax.swing.JButton();
+        modifier = new javax.swing.JButton();
+        supprimer = new javax.swing.JButton();
+        actualiser = new javax.swing.JButton();
+        menu = new javax.swing.JButton();
+        jLabel1 = new javax.swing.JLabel();
+        jLabel2 = new javax.swing.JLabel();
+        jLabel3 = new javax.swing.JLabel();
+        jLabel4 = new javax.swing.JLabel();
+        txtmed = new javax.swing.JComboBox<>();
+        txtsalle = new javax.swing.JTextField();
+        jLabel5 = new javax.swing.JLabel();
+        txtcreneaux = new javax.swing.JComboBox<>();
+
+        setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
+
+        jTable1.setModel(new javax.swing.table.DefaultTableModel(
+                new Object [][] {
+                        {null, null, null, null},
+                        {null, null, null, null},
+                        {null, null, null, null},
+                        {null, null, null, null}
+                },
+                new String []{
+
+                }
+        ));
+        jScrollPane1.setViewportView(jTable1);
+
+        jPanel2.setBorder(javax.swing.BorderFactory.createBevelBorder(javax.swing.border.BevelBorder.RAISED));
+
+        ajouter.setFont(new java.awt.Font("Helvetica Neue", 0, 14)); // NOI18N
+        ajouter.setText("Ajouter");
+        ajouter.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                ajouterActionPerformed(evt);
+
+                // Demander à l'utilisateur de confirmer son ID patient
+                String patientIdInput = JOptionPane.showInputDialog(RDVous.this, "Veuillez confirmer votre identifiant  :");
+                if (patientIdInput == null) {
+                    // Si l'utilisateur annule la saisie, ne rien faire
+                    return;
+                }
+
+                // Convertir l'ID saisi en entier
+                int patientId;
+                try {
+                    patientId = Integer.parseInt(patientIdInput);
+                } catch (NumberFormatException e) {
+                    JOptionPane.showMessageDialog(RDVous.this, "L'ID patient doit être un nombre entier.");
+                    return;
+                }
+
+                String selectedMedecin = (String) txtmed.getSelectedItem();
+                String selectedCreneau = (String) txtcreneaux.getSelectedItem();
+                String salle = txtsalle.getText();
+
+                if (selectedMedecin == null || selectedCreneau == null || salle.isEmpty()) {
+                    JOptionPane.showMessageDialog(RDVous.this, "Veuillez sélectionner un médecin, un créneau et une salle.");
+                    return;
+                }
+
+                String[] medecinParts = selectedMedecin.split(" - ");
+                int idMedecin = Integer.parseInt(medecinParts[0]);
+
+                String[] creneauParts = selectedCreneau.split(" - ");
+                if (creneauParts.length != 3) {
+                    JOptionPane.showMessageDialog(RDVous.this, "Format de créneau invalide.");
+                    return;
+                }
+
+                Date date;
+                try {
+                    date = Date.valueOf(creneauParts[0]);
+                } catch (IllegalArgumentException e) {
+                    JOptionPane.showMessageDialog(RDVous.this, "Format de date incorrect.");
+                    return;
+                }
+                String heureDebut = creneauParts[1];
+                String heureFin = creneauParts[2];
+
+                try {
+                    // Vérifier si le créneau existe et récupérer son ID
+                    int creneauId = fetchCreneauId(creneauParts[0], heureDebut, heureFin, idMedecin);
+
+                    // Insérer un nouveau rendez-vous
+                    String sql = "INSERT INTO Rdv (id, idMedecin, idPatient) VALUES (?, ?, ?)";
+                    try (Connection conn = new DbConfigDAO().getConnection();
+                         PreparedStatement pst = conn.prepareStatement(sql)) {
+
+                        pst.setInt(1, creneauId);
+                        pst.setInt(2, idMedecin);
+                        pst.setInt(3, patientId);
+
+                        int affectedRows = pst.executeUpdate();
+                        if (affectedRows > 0) {
+                            JOptionPane.showMessageDialog(RDVous.this, "Rendez-vous ajouté avec succès.");
+                            table();// Mise à jour de l'affichage des rendez-vous
+                            actualiserTableau();
+                        } else {
+                            JOptionPane.showMessageDialog(RDVous.this, "Erreur lors de l'ajout du rendez-vous.");
+                        }
+                    }
+                } catch (SQLException | ClassNotFoundException e) {
+                    JOptionPane.showMessageDialog(RDVous.this, "Erreur lors de la connexion à la base de données: " + e.getMessage());
+                    e.printStackTrace();
+                }
+            }
+
+
+        private int fetchCreneauId(String date, String heureDebut, String heureFin, int idMedecin) throws SQLException, ClassNotFoundException {
+                DbConfigDAO conf = new DbConfigDAO();
+                Connection conn = conf.getConnection();
+                String query = "SELECT id FROM Creneaux WHERE date=? AND debut=? AND fin=? AND idMedecin=?";
+                PreparedStatement pst = conn.prepareStatement(query);
+                pst.setString(1, date);
+                pst.setString(2, heureDebut);
+                pst.setString(3, heureFin);
+                pst.setInt(4, idMedecin);
+                ResultSet rs = pst.executeQuery();
+                if (rs.next()) {
+                    return rs.getInt("id");
+                } else {
+                    throw new SQLException("Aucun créneau correspondant trouvé.");
+                }
+            }
+
+
+        });
+
+
+        modifier.setFont(new java.awt.Font("Helvetica Neue", 0, 14)); // NOI18N
+        modifier.setText("Modifier");
+        modifier.addActionListener(new java.awt.event.ActionListener() {
+
+
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                modifierActionPerformed(evt);
+                // Récupérer les valeurs sélectionnées dans les JComboBox
+                String selectedMedecin = (String) txtmed.getSelectedItem();
+                String selectedCreneau = (String) txtcreneaux.getSelectedItem();
+                String salle = txtsalle.getText();
+
+                // Vérifier si toutes les valeurs nécessaires sont sélectionnées
+                if (selectedMedecin == null || selectedCreneau == null || salle.isEmpty()) {
+                    JOptionPane.showMessageDialog(RDVous.this, "Veuillez sélectionner un médecin, un créneau et une salle.");
+                    return;
+                }
+
+                // Diviser les valeurs des JComboBox pour obtenir les parties pertinentes
+                String[] medecinParts = selectedMedecin.split(" - ");
+                int idMedecin = Integer.parseInt(medecinParts[0]);
+
+                String[] creneauParts = selectedCreneau.split(" - ");
+                if (creneauParts.length != 3) {
+                    JOptionPane.showMessageDialog(RDVous.this, "Format de créneau invalide.");
+                    return;
+                }
+
+                Date date;
+                try {
+                    date = Date.valueOf(creneauParts[0]);
+                } catch (IllegalArgumentException e) {
+                    JOptionPane.showMessageDialog(RDVous.this, "Format de date incorrect.");
+                    return;
+                }
+                String heureDebut = creneauParts[1];
+                String heureFin = creneauParts[2];
+
+                try {
+                    // Vérifier si le créneau existe et récupérer son ID
+                    int creneauId = fetchCreneauId(creneauParts[0], heureDebut, heureFin, idMedecin);
+
+                    // Mettre à jour les paramètres du rendez-vous dans la table Rdv
+                    String sql = "UPDATE Rdv SET idMedecin = ?, id = ? WHERE idRdv = ?";
+                    try (Connection conn = new DbConfigDAO().getConnection();
+                         PreparedStatement pst = conn.prepareStatement(sql)) {
+
+                        pst.setInt(1, idMedecin);
+                        pst.setInt(2, creneauId);
+                        // Vous devez récupérer l'ID du rendez-vous que vous souhaitez modifier et le remplacer ci-dessous
+                        pst.setInt(3, Integer.parseInt("idRdv"));
+
+                        int affectedRows = pst.executeUpdate();
+                        if (affectedRows > 0) {
+                            JOptionPane.showMessageDialog(RDVous.this, "Rendez-vous modifié avec succès.");
+                            table(); // Mise à jour de l'affichage des rendez-vous
+                            actualiserTableau();
+                        } else {
+                            JOptionPane.showMessageDialog(RDVous.this, "Erreur lors de la modification du rendez-vous.");
+                        }
+                    }
+                } catch (SQLException | ClassNotFoundException e) {
+                    JOptionPane.showMessageDialog(RDVous.this, "Erreur lors de la connexion à la base de données: " + e.getMessage());
+                    e.printStackTrace();
+                }
+            }
+
+            private int fetchCreneauId(String date, String heureDebut, String heureFin, int idMedecin) throws SQLException, ClassNotFoundException {
+                DbConfigDAO conf = new DbConfigDAO();
+                Connection conn = conf.getConnection();
+                String query = "SELECT id FROM Creneaux WHERE date=? AND debut=? AND fin=? AND idMedecin=?";
+                PreparedStatement pst = conn.prepareStatement(query);
+                pst.setString(1, date);
+                pst.setString(2, heureDebut);
+                pst.setString(3, heureFin);
+                pst.setInt(4, idMedecin);
+                ResultSet rs = pst.executeQuery();
+                if (rs.next()) {
+                    return rs.getInt("id");
+                } else {
+                    throw new SQLException("Aucun créneau correspondant trouvé.");
+                }
+            }
+        });
+
+        supprimer.setFont(new java.awt.Font("Helvetica Neue", 0, 14)); // NOI18N
+        supprimer.setText("Supprimer");
+        supprimer.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                supprimerActionPerformed(evt);
+                int selectedRow = jTable1.getSelectedRow();
+                if (selectedRow == -1) {
+                    JOptionPane.showMessageDialog(RDVous.this, "Veuillez sélectionner un rendez-vous à supprimer.");
+                    return;
+                }
+
+                int idRdv = Integer.parseInt(jTable1.getValueAt(selectedRow, 0).toString());
+
+                int confirmation = JOptionPane.showConfirmDialog(RDVous.this, "Voulez-vous vraiment supprimer ce rendez-vous ?", "Confirmation de suppression", JOptionPane.YES_NO_OPTION);
+                if (confirmation == JOptionPane.YES_OPTION) {
+                    try {
+                        String sql = "DELETE FROM Rdv WHERE idRdv = ?";
+                        try (Connection conn = new DbConfigDAO().getConnection();
+                             PreparedStatement pst = conn.prepareStatement(sql)) {
+                            pst.setInt(1, idRdv);
+                            int affectedRows = pst.executeUpdate();
+                            if (affectedRows > 0) {
+                                JOptionPane.showMessageDialog(RDVous.this, "Rendez-vous supprimé avec succès.");
+                                table();  // Mettre à jour l'affichage des rendez-vous
+                            } else {
+                                JOptionPane.showMessageDialog(RDVous.this, "Erreur lors de la suppression du rendez-vous.");
+                            }
+                        }
+                    } catch (SQLException | ClassNotFoundException e) {
+                        JOptionPane.showMessageDialog(RDVous.this, "Erreur lors de la connexion à la base de données: " + e.getMessage());
+                        e.printStackTrace();
+                    }
+                }
+            }
+        });
+
+        actualiser.setFont(new java.awt.Font("Helvetica Neue", 0, 14)); // NOI18N
+        actualiser.setText("Actualiser");
+        actualiser.addActionListener(new java.awt.event.ActionListener() {
+              public void actionPerformed(java.awt.event.ActionEvent evt) {
+                   jButton4ActionPerformed(evt);
+                      txtmed.getSelectedItem();
+                        txtcreneaux.getSelectedItem();
+                         txtsalle.setText("");
+
+                         actualiserTableau();
+                                         }
+                                     });
+
+        menu.setFont(new java.awt.Font("Helvetica Neue", 0, 14)); // NOI18N
+        menu.setText("Menu");
+        menu.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                menuActionPerformed(evt);
+                dispose();
+                new patient().setVisible(true);
+            }
+        });
+
+        javax.swing.GroupLayout jPanel2Layout = new javax.swing.GroupLayout(jPanel2);
+        jPanel2.setLayout(jPanel2Layout);
+        jPanel2Layout.setHorizontalGroup(
+                jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                        .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel2Layout.createSequentialGroup()
+                                .addContainerGap(45, Short.MAX_VALUE)
+                                .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                        .addComponent(menu)
+                                        .addComponent(actualiser)
+                                        .addComponent(supprimer)
+                                        .addComponent(modifier)
+                                        .addComponent(ajouter))
+                                .addGap(42, 42, 42))
+        );
+        jPanel2Layout.setVerticalGroup(
+                jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                        .addGroup(jPanel2Layout.createSequentialGroup()
+                                .addGap(32, 32, 32)
+                                .addComponent(ajouter)
+                                .addGap(26, 26, 26)
+                                .addComponent(modifier)
+                                .addGap(26, 26, 26)
+                                .addComponent(supprimer)
+                                .addGap(29, 29, 29)
+                                .addComponent(actualiser)
+                                .addGap(67, 67, 67)
+                                .addComponent(menu)
+                                .addContainerGap(100, Short.MAX_VALUE))
+        );
+
+        jLabel1.setFont(new java.awt.Font("Helvetica Neue", 0, 18)); // NOI18N
+        jLabel1.setText("PRISE DE RENDEZ-VOUS");
+
+        jLabel2.setFont(new java.awt.Font("Helvetica Neue", 0, 16)); // NOI18N
+        jLabel2.setText("Medecin :");
+
+        jLabel3.setFont(new java.awt.Font("Helvetica Neue", 0, 16)); // NOI18N
+        jLabel3.setText("Creneaux :");
+
+        jLabel4.setFont(new java.awt.Font("Helvetica Neue", 0, 16)); // NOI18N
+        jLabel4.setText("Salle :");
+
+        txtmed.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                txtmedActionPerformed(evt);
+            }
+        });
+
+        jLabel5.setFont(new java.awt.Font("Helvetica Neue", 0, 16)); // NOI18N
+        jLabel5.setText("                                                                       Historiques des rendez-vous");
+        jLabel5.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
+
+        txtcreneaux.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                txtcreneauxActionPerformed(evt);
+            }
+        });
+
+        javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
+        jPanel1.setLayout(jPanel1Layout);
+        jPanel1Layout.setHorizontalGroup(
+                jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                        .addComponent(jScrollPane1, javax.swing.GroupLayout.Alignment.TRAILING)
+                        .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel1Layout.createSequentialGroup()
+                                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                        .addGroup(jPanel1Layout.createSequentialGroup()
+                                                .addGap(113, 113, 113)
+                                                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                                        .addComponent(jLabel4, javax.swing.GroupLayout.PREFERRED_SIZE, 49, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                                        .addComponent(jLabel3, javax.swing.GroupLayout.PREFERRED_SIZE, 86, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                                        .addComponent(jLabel2, javax.swing.GroupLayout.PREFERRED_SIZE, 86, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                                .addGap(50, 50, 50)
+                                                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                                                        .addComponent(txtsalle)
+                                                        .addComponent(txtmed, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                                        .addComponent(txtcreneaux, 0, 234, Short.MAX_VALUE))
+                                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                                        .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel1Layout.createSequentialGroup()
+                                                .addContainerGap(285, Short.MAX_VALUE)
+                                                .addComponent(jLabel1, javax.swing.GroupLayout.PREFERRED_SIZE, 236, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                                .addGap(103, 103, 103)))
+                                .addComponent(jPanel2, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addGap(16, 16, 16))
+                        .addComponent(jLabel5, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+        );
+        jPanel1Layout.setVerticalGroup(
+                jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                        .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel1Layout.createSequentialGroup()
+                                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                        .addGroup(jPanel1Layout.createSequentialGroup()
+                                                .addGap(44, 44, 44)
+                                                .addComponent(jPanel2, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                        .addGroup(jPanel1Layout.createSequentialGroup()
+                                                .addGap(33, 33, 33)
+                                                .addComponent(jLabel1, javax.swing.GroupLayout.PREFERRED_SIZE, 49, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                                .addGap(42, 42, 42)
+                                                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                                                        .addComponent(jLabel2, javax.swing.GroupLayout.PREFERRED_SIZE, 31, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                                        .addComponent(txtmed, javax.swing.GroupLayout.PREFERRED_SIZE, 39, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                                .addGap(43, 43, 43)
+                                                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                                                        .addComponent(jLabel3, javax.swing.GroupLayout.PREFERRED_SIZE, 31, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                                        .addComponent(txtcreneaux, javax.swing.GroupLayout.PREFERRED_SIZE, 39, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                                .addGap(40, 40, 40)
+                                                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                                                        .addComponent(jLabel4)
+                                                        .addComponent(txtsalle, javax.swing.GroupLayout.PREFERRED_SIZE, 34, javax.swing.GroupLayout.PREFERRED_SIZE))))
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 19, Short.MAX_VALUE)
+                                .addComponent(jLabel5, javax.swing.GroupLayout.PREFERRED_SIZE, 28, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 356, javax.swing.GroupLayout.PREFERRED_SIZE))
+        );
+
+        javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
+        getContentPane().setLayout(layout);
+        layout.setHorizontalGroup(
+                layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                        .addComponent(jPanel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+        );
+        layout.setVerticalGroup(
+                layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                        .addGroup(layout.createSequentialGroup()
+                                .addComponent(jPanel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                .addContainerGap())
+        );
+
+        pack();
+    }// </editor-fold>
+
+    private void modifierActionPerformed(ActionEvent evt) {
+    }
+
+    private void menuActionPerformed(ActionEvent evt) {
+    }
+
+    private void ajouterActionPerformed(ActionEvent evt) {
+    }
+
+    private void jButton4ActionPerformed(ActionEvent evt) {
+    }
+
+    private void supprimerActionPerformed(java.awt.event.ActionEvent evt) {
+        // TODO add your handling code here:
+    }
+
+
+    private void txtcreneauxActionPerformed(java.awt.event.ActionEvent evt) {
+        // TODO add your handling code here:
+    }
+
+
+    // Méthode pour charger les créneaux en fonction de l'ID du médecin sélectionné
+    private void chargerCreneaux(int idMedecin) {
+        txtcreneaux.removeAllItems(); // Effacer les anciens créneaux
+        try {
+            DbConfigDAO conf = new DbConfigDAO();
+            try (Connection connection = conf.getConnection()) {
+                String query = "SELECT date, debut, fin FROM Creneaux WHERE idMedecin = ?";
+                try (PreparedStatement preparedStatement = connection.prepareStatement(query)) {
+                    preparedStatement.setInt(1, idMedecin);
+                    try (ResultSet resultSet = preparedStatement.executeQuery()) {
+                        while (resultSet.next()) {
+                            Date date = resultSet.getDate("date");
+                            String heureDebut = resultSet.getString("debut");
+                            String heureFin = resultSet.getString("fin");
+                            // Ajouter le créneau au JComboBox
+                            txtcreneaux.addItem(date + " - " + heureDebut + " - " + heureFin);
+                        }
+                    }
+                }
+            }
+        } catch (SQLException | ClassNotFoundException ex) {
+            ex.printStackTrace();
+            JOptionPane.showMessageDialog(this, "Erreur lors du chargement des créneaux depuis la base de données.");
+        }
+    }
+
+    // Mettez à jour la méthode chargerMedecins pour stocker l'ID du médecin
+    private void chargerMedecins() {
+        try {
+            DbConfigDAO conf = new DbConfigDAO();
+            try (Connection connection = conf.getConnection()) {
+                String query = "SELECT U.id_utilisateur, U.nom, M.Specialites FROM Utilisateurs U " +
+                        "JOIN Medecins M ON U.id_utilisateur = M.id_utilisateur";
+                try (PreparedStatement preparedStatement = connection.prepareStatement(query)) {
+                    try (ResultSet resultSet = preparedStatement.executeQuery()) {
+                        while (resultSet.next()) {
+                            int idMedecin = resultSet.getInt("id_utilisateur");
+                            String nomMedecin = resultSet.getString("nom");
+                            String specialiteMedecin = resultSet.getString("Specialites");
+                            // Ajouter le médecin au JComboBox
+                            txtmed.addItem(idMedecin + " - " + nomMedecin + " - " + specialiteMedecin);
+                        }
+                    }
+                }
+            }
+        } catch (SQLException | ClassNotFoundException ex) {
+            ex.printStackTrace();
+            JOptionPane.showMessageDialog(this, "Erreur lors du chargement des médecins depuis la base de données.");
+        }
+    }
+
+    // Ajoutez un écouteur d'événements sur le JComboBox des médecins
+    private void txtmedActionPerformed(java.awt.event.ActionEvent evt) {
+        // Récupérer l'ID du médecin sélectionné
+        String selectedItem = (String) txtmed.getSelectedItem();
+        int idMedecin = Integer.parseInt(selectedItem.split(" - ")[0]);
+        // Charger les créneaux correspondants à ce médecin
+        chargerCreneaux(idMedecin);
+        // Charger la salle correspondant à ce médecin et l'afficher dans le champ txtsalle
+        chargerSalle(idMedecin);
+    }
+    // Méthode pour charger la salle correspondant à l'ID du médecin sélectionné
+    private void chargerSalle(int idMedecin) {
+        try {
+            DbConfigDAO conf = new DbConfigDAO();
+            try (Connection connection = conf.getConnection()) {
+                String query = "SELECT ALL M.id_salle FROM Medecins M WHERE M.id_utilisateur = ?";
+                try (PreparedStatement preparedStatement = connection.prepareStatement(query)) {
+                    preparedStatement.setInt(1, idMedecin);
+                    try (ResultSet resultSet = preparedStatement.executeQuery()) {
+                        if (resultSet.next()) {
+                            int sal = resultSet.getInt("id_salle");
+                            // Afficher la salle dans le champ txtsalle
+                            txtsalle.setText(String.valueOf(sal));
+                        } else {
+                            txtsalle.setText(""); // Si aucune salle correspondante n'est trouvée, effacer le champ txtsalle
+                        }
+                    }
+                }
+            }
+        } catch (SQLException | ClassNotFoundException ex) {
+            ex.printStackTrace();
+            JOptionPane.showMessageDialog(this, "Erreur lors du chargement de la salle depuis la base de données.");
+        }
+    }
+
+    public void table() {
+        String[] colums = {"Id RDV", "Nom Med","Prenom Med", "Email Med", "Specialites", "Date", "Heure debut", "Heure fin", "Salle"};
+        DefaultTableModel model = new DefaultTableModel(null, colums);
+
+        String sql = "SELECT Rdv.idRdv, U.nom,U.prenom,U.email,M.Specialites,C.date,\n" +
+                "    C.debut,\n" +
+                "    C.fin,\n" +
+                "    M.id_salle\n" +
+                "FROM \n" +
+                "    Rdv\n" +
+                "JOIN \n" +
+                "    Creneaux C ON Rdv.id = C.id\n" +
+                "JOIN \n" +
+                "    Medecins M ON C.idMedecin = M.idMedecin\n" +
+                "JOIN \n" +
+                "    Utilisateurs U ON M.id_utilisateur = U.id_utilisateur;\n";
+
+        DbConfigDAO conf = new DbConfigDAO();
+        try (
+             Connection conn = conf.getConnection();
+             Statement st = conn.createStatement();
+             ResultSet rs = st.executeQuery(sql)) {
+
+            while (rs.next()) {
+                String[] montrer = {
+                        rs.getString("idRdv"),
+                        rs.getString("nom"),
+                        rs.getString("prenom"),
+                        rs.getString("email"),
+                        rs.getString("Specialites"),
+                        rs.getString("date"),
+                        rs.getString("debut"),
+                        rs.getString("fin"),
+                        rs.getString("id_salle")
+                };
+                model.addRow(montrer);
+            }
+            jTable1.setModel(model);
+        } catch (Exception e) {
+            e.printStackTrace();
+            JOptionPane.showMessageDialog(null, "Erreur lors de la récupération des données : " + e.getMessage(), "Erreur", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+
+
+    public void actualiserTableau() {
+        String[] rdv = {"Id RDV", "Nom Med","Prenom Med", "Email Med", "Specialites", "Date", "Heure debut", "Heure fin", "Salle"};
+        DefaultTableModel model = new DefaultTableModel(null, rdv);
+
+        String sql = "SELECT Rdv.idRdv, U.nom,U.prenom,U.email,M.Specialites,C.date,\n" +
+                "    C.debut,\n" +
+                "    C.fin,\n" +
+                "    M.id_salle\n" +
+                "FROM \n" +
+                "    Rdv\n" +
+                "JOIN \n" +
+                "    Creneaux C ON Rdv.id = C.id\n" +
+                "JOIN \n" +
+                "    Medecins M ON C.idMedecin = M.idMedecin\n" +
+                "JOIN \n" +
+                "    Utilisateurs U ON M.id_utilisateur = U.id_utilisateur;\n";
+
+        try (Connection conn = DriverManager.getConnection("jdbc:mysql://localhost:8889/RendezVous_Med", "root", "root");
+             Statement st = conn.createStatement();
+             ResultSet rs = st.executeQuery(sql)) {
+            while (rs.next()) {
+                String[] row = {
+                        rs.getString("idRdv"),
+                        rs.getString("nom"),
+                        rs.getString("prenom"),
+                        rs.getString("email"),
+                        rs.getString("Specialites"),
+                        rs.getString("date"),
+                        rs.getString("debut"),
+                        rs.getString("fin"),
+                        rs.getString("id_salle")
+                };
+                model.addRow(row);
+            }
+            jTable1.setModel(model);
+        } catch (SQLException ex) {
+            ex.printStackTrace();
+            JOptionPane.showMessageDialog(null, "Erreur lors de la récupération des données.");
+        }
+    }
+
+
+
+
+
+    public static void main(String args[]) {
+
+        try {
+            for (javax.swing.UIManager.LookAndFeelInfo info : javax.swing.UIManager.getInstalledLookAndFeels()) {
+                if ("Nimbus".equals(info.getName())) {
+                    javax.swing.UIManager.setLookAndFeel(info.getClassName());
+                    break;
+                }
+            }
+        } catch (ClassNotFoundException ex) {
+            java.util.logging.Logger.getLogger(RDVous.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+        } catch (InstantiationException ex) {
+            java.util.logging.Logger.getLogger(RDVous.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+        } catch (IllegalAccessException ex) {
+            java.util.logging.Logger.getLogger(RDVous.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+        } catch (javax.swing.UnsupportedLookAndFeelException ex) {
+            java.util.logging.Logger.getLogger(RDVous.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+        }
+        //</editor-fold>
+
+
+        /* Create and display the form */
+        java.awt.EventQueue.invokeLater(new Runnable() {
+            public void run() {
+                new RDVous().setVisible(true);
+            }
+        });
+    }
+
+    // Variables declaration - do not modify
+    private javax.swing.JButton actualiser;
+    private javax.swing.JButton ajouter;
+    private javax.swing.JLabel jLabel1;
+    private javax.swing.JLabel jLabel2;
+    private javax.swing.JLabel jLabel3;
+    private javax.swing.JLabel jLabel4;
+    private javax.swing.JLabel jLabel5;
+    private javax.swing.JPanel jPanel1;
+    private javax.swing.JPanel jPanel2;
+    private javax.swing.JScrollPane jScrollPane1;
+    private javax.swing.JTable jTable1;
+    private javax.swing.JButton menu;
+    private javax.swing.JButton modifier;
+    private javax.swing.JButton supprimer;
+    private javax.swing.JComboBox<String> txtcreneaux;
+    private javax.swing.JComboBox<String> txtmed;
+    private javax.swing.JTextField txtsalle;
+    // End of variables declaration
+}
+

@@ -1,0 +1,52 @@
+package Modele;
+
+import java.util.ArrayList;
+import java.util.List;
+public class Patients extends Utilisateurs {
+    private String sexe;
+    private String dateNaissance;
+    private List<RendezVous> rendezVous;
+
+    public Patients(int id_utilisateur, String nom, String prenom, String phone, String email, String password, String typeCompte, String sexe, String dateNaissance) {
+        super(id_utilisateur, nom, prenom, phone, email, password, typeCompte);
+        this.sexe = sexe;
+        this.dateNaissance = dateNaissance;
+        this.rendezVous = new ArrayList<>();
+    }
+
+    public Patients(int id, String nom, String prenom, String sexe, String dateNaissance) {
+    }
+
+    public Patients(String nom, String prenom, String sexe, String dateNaissance) {
+    }
+
+    public List<RendezVous> getAllRendezVous() {
+        return this.rendezVous;
+    }
+
+    public void ajouterRendezVous(RendezVous rendezVous) {
+        this.rendezVous.add(rendezVous);
+    }
+    public boolean annulerRendezVous(RendezVous rendezVous) {
+        return this.rendezVous.remove(rendezVous);
+    }
+    
+    public List<RendezVous> getRendezVous() {
+        return rendezVous;
+    }
+    public String getSexe() {
+        return sexe;
+    }
+
+    public void setSexe(String sexe) {
+        this.sexe = sexe;
+    }
+
+    public String getDateNaissance() {
+        return dateNaissance;
+    }
+
+    public void setDateNaissance(String dateNaissance) {
+        this.dateNaissance = dateNaissance;
+    }
+}//

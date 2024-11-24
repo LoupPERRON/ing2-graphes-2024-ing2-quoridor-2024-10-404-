@@ -1,0 +1,369 @@
+package Vue.Connexion;
+
+import DAO.DbConfigDAO;
+import Vue.Admin.admin;
+import Vue.Medecin.medecin;
+import Vue.Patient.patient;
+
+import javax.swing.*;
+import java.awt.event.ActionEvent;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+
+
+public class Register extends javax.swing.JFrame {
+    PreparedStatement pst;
+    ResultSet rs;
+
+    public Register() {
+        initComponents();
+        setLocationRelativeTo(null); // Pour centrer la fenêtre
+        setVisible(true);
+    }
+
+
+    @SuppressWarnings("unchecked")
+    // <editor-fold defaultstate="collapsed" desc="Generated Code">
+    private void initComponents() {
+
+        jLabel1 = new javax.swing.JLabel();
+        jLabel2 = new javax.swing.JLabel();
+        jLabel3 = new javax.swing.JLabel();
+        jLabel4 = new javax.swing.JLabel();
+        jLabel5 = new javax.swing.JLabel();
+        jLabel6 = new javax.swing.JLabel();
+        inscription = new javax.swing.JButton();
+        Annuler = new javax.swing.JButton();
+        txtnom = new javax.swing.JTextField();
+        txtprenom = new javax.swing.JTextField();
+        txtemail = new javax.swing.JTextField();
+        txtmdp = new javax.swing.JPasswordField();
+        txtconfirme = new javax.swing.JPasswordField();
+        txtmsg1 = new javax.swing.JLabel();
+        jLabel8 = new javax.swing.JLabel();
+        typeCompte = new javax.swing.JComboBox<>();
+
+        setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
+
+        jLabel1.setFont(new java.awt.Font("Helvetica Neue", 0, 18)); // NOI18N
+        jLabel1.setText("INSCRIVEZ-VOUS");
+
+        jLabel2.setFont(new java.awt.Font("Helvetica Neue", 0, 18)); // NOI18N
+        jLabel2.setText("Nom :");
+
+        jLabel3.setFont(new java.awt.Font("Helvetica Neue", 0, 18)); // NOI18N
+        jLabel3.setText("Prenom :");
+
+        jLabel4.setFont(new java.awt.Font("Helvetica Neue", 0, 18)); // NOI18N
+        jLabel4.setText("Email :");
+
+        jLabel5.setFont(new java.awt.Font("Helvetica Neue", 0, 18)); // NOI18N
+        jLabel5.setText("Mot de passe :");
+
+        jLabel6.setFont(new java.awt.Font("Helvetica Neue", 0, 18)); // NOI18N
+        jLabel6.setText("Confirmer :");
+
+        inscription.setFont(new java.awt.Font("Helvetica Neue", 0, 18)); // NOI18N
+        inscription.setText("S'inscrire");
+        inscription.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(ActionEvent evt) {
+                inscriptionActionPerformed(evt);
+                try {
+                    String nom = txtnom.getText();
+                    String prenom = txtprenom.getText();
+                    String email = txtemail.getText();
+                    String mdp = txtmdp.getText();
+                    String confirme = txtconfirme.getText();
+                    String typeCompteSelected = (String) typeCompte.getSelectedItem();
+
+                    if (txtnom.getText().isEmpty() || txtprenom.getText().isEmpty() || txtemail.getText().isEmpty() || String.valueOf(txtmdp.getPassword()).isEmpty() || String.valueOf(txtconfirme.getPassword()).isEmpty()) {
+                        txtmsg1.setText("Champs invalides !");
+                    }
+
+
+                    DbConfigDAO conf = new DbConfigDAO();
+                    try (Connection conn = conf.getConnection();
+                         PreparedStatement pst = conn.prepareStatement("INSERT INTO Utilisateurs(nom, prenom, email, password, type_compte) values (?,?,?,?,?)")) {
+                        pst.setString(1, nom);
+                        pst.setString(2, prenom);
+                        pst.setString(3, email);
+                        pst.setString(4, mdp);
+                        pst.setString(5, typeCompteSelected);
+                        pst.executeUpdate();
+
+                        if (typeCompteSelected.equals("patient")) {
+                            // Insérer des informations supplémentaires pour les patients
+                            String sexe = JOptionPane.showInputDialog("Entrez votre sexe :");
+                            int age = Integer.parseInt(JOptionPane.showInputDialog("Entrez votre âge :"));
+
+                            try (PreparedStatement pstPatient = conn.prepareStatement("INSERT INTO Patients (id_utilisateur, sexe, age) VALUES (LAST_INSERT_ID(), ?, ?)")) {
+                                pstPatient.setString(1, sexe);
+                                pstPatient.setInt(2, age);
+                                pstPatient.executeUpdate();
+                            }
+                        } else if (typeCompteSelected.equals("administrateur")) {
+                            // Insérer des informations supplémentaires pour les administrateurs
+                            String poste = JOptionPane.showInputDialog("Entrez votre poste :");
+
+                            try (PreparedStatement pstAdmin = conn.prepareStatement("INSERT INTO Administrateurs (id_utilisateur, poste) VALUES (LAST_INSERT_ID(), ?)")) {
+                                pstAdmin.setString(1, poste);
+                                pstAdmin.executeUpdate();
+                            }
+                        } else if (typeCompteSelected.equals("medecin")) {
+                            // Insérer des informations supplémentaires pour les médecins
+                            String specialite = JOptionPane.showInputDialog("Entrez votre spécialité :");
+
+                            try (PreparedStatement pstMedecin = conn.prepareStatement("INSERT INTO Medecins (id_utilisateur, Specialite) VALUES (LAST_INSERT_ID(), ?)")) {
+                                pstMedecin.setString(1, specialite);
+                                pstMedecin.executeUpdate();
+                            }
+                        }
+                    }
+                    //JOptionPane.showMessageDialog(Register.this, "Inscription réussie !", "Succès", JOptionPane.INFORMATION_MESSAGE);
+
+
+                    // Redirection vers la page correspondant au type de compte
+                    switch (typeCompteSelected) {
+                        case "patient":
+                            new patient().setVisible(true);
+                            break;
+
+                        case "medecin":
+                            new medecin().setVisible(true);
+                            break;
+
+                        case "administrateur":
+                            new admin().setVisible(true);
+                            break;
+
+                        default:
+                            new Accueil().setVisible(true);
+                            break;
+                    }
+                    Register.this.dispose(); // Ferme la fenêtre d'inscription
+
+                }catch (Exception exception) {
+                    exception.printStackTrace();
+                    //JOptionPane.showMessageDialog(Register.this, "Erreur lors de l'enregistrement : " + exception.getMessage(), "Erreur de base de données", JOptionPane.ERROR_MESSAGE);
+
+                }
+            }
+        });
+
+
+        Annuler.setFont(new java.awt.Font("Helvetica Neue", 0, 18)); // NOI18N
+        Annuler.setText("Annuler");
+        Annuler.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                AnnulerActionPerformed(evt);
+                dispose(); // Ferme la fenêtre d'inscription
+                new Accueil().setVisible(true); // Redirige vers la page de connexion
+
+            }
+        });
+
+        txtnom.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                txtnomActionPerformed(evt);
+            }
+        });
+
+        txtemail.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                txtemailActionPerformed(evt);
+            }
+        });
+
+        txtmsg1.setForeground(new java.awt.Color(255, 0, 51));
+        txtmsg1.setText("");
+
+        jLabel8.setFont(new java.awt.Font("Helvetica Neue", 0, 18)); // NOI18N
+        jLabel8.setText("Type de compte :");
+
+        typeCompte.setFont(new java.awt.Font("Helvetica Neue", 0, 14)); // NOI18N
+        typeCompte.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "patient", "medecin", "administrateur" }));
+        typeCompte.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                typeCompteActionPerformed(evt);
+            }
+        });
+
+        javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
+        getContentPane().setLayout(layout);
+        layout.setHorizontalGroup(
+                layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                        .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
+                                .addGap(0, 0, Short.MAX_VALUE)
+                                .addComponent(jLabel1, javax.swing.GroupLayout.PREFERRED_SIZE, 181, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addGap(205, 205, 205))
+                        .addGroup(layout.createSequentialGroup()
+                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
+                                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                                        .addGroup(layout.createSequentialGroup()
+                                                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                                                        .addGroup(layout.createSequentialGroup()
+                                                                                .addGap(58, 58, 58)
+                                                                                .addComponent(jLabel4))
+                                                                        .addGroup(layout.createSequentialGroup()
+                                                                                .addGap(57, 57, 57)
+                                                                                .addComponent(jLabel2))
+                                                                        .addGroup(layout.createSequentialGroup()
+                                                                                .addGap(58, 58, 58)
+                                                                                .addComponent(jLabel3)))
+                                                                .addGap(67, 67, 67)
+                                                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                                                                        .addComponent(txtemail, javax.swing.GroupLayout.DEFAULT_SIZE, 289, Short.MAX_VALUE)
+                                                                        .addComponent(txtprenom)
+                                                                        .addComponent(txtnom)))
+                                                        .addGroup(layout.createSequentialGroup()
+                                                                .addGap(58, 58, 58)
+                                                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                                                        .addGroup(layout.createSequentialGroup()
+                                                                                .addComponent(jLabel8)
+                                                                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                                                                .addComponent(typeCompte, javax.swing.GroupLayout.PREFERRED_SIZE, 280, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                                                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                                                                                .addGroup(layout.createSequentialGroup()
+                                                                                        .addComponent(jLabel5)
+                                                                                        .addGap(18, 18, 18)
+                                                                                        .addComponent(txtmdp, javax.swing.GroupLayout.DEFAULT_SIZE, 289, Short.MAX_VALUE))
+                                                                                .addGroup(layout.createSequentialGroup()
+                                                                                        .addComponent(jLabel6)
+                                                                                        .addGap(51, 51, 51)
+                                                                                        .addComponent(txtconfirme))))))
+                                                .addGroup(layout.createSequentialGroup()
+                                                        .addGap(99, 99, 99)
+                                                        .addComponent(inscription, javax.swing.GroupLayout.PREFERRED_SIZE, 140, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                                        .addComponent(Annuler, javax.swing.GroupLayout.PREFERRED_SIZE, 140, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                                        .addGroup(layout.createSequentialGroup()
+                                                .addGap(47, 47, 47)
+                                                .addComponent(txtmsg1, javax.swing.GroupLayout.PREFERRED_SIZE, 417, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                                .addContainerGap(167, Short.MAX_VALUE))
+        );
+        layout.setVerticalGroup(
+                layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                        .addGroup(layout.createSequentialGroup()
+                                .addGap(25, 25, 25)
+                                .addComponent(jLabel1, javax.swing.GroupLayout.PREFERRED_SIZE, 46, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                        .addGroup(layout.createSequentialGroup()
+                                                .addGap(23, 23, 23)
+                                                .addComponent(jLabel2))
+                                        .addGroup(layout.createSequentialGroup()
+                                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                                                .addComponent(txtnom, javax.swing.GroupLayout.PREFERRED_SIZE, 41, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                                .addGap(18, 18, 18)
+                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                                        .addComponent(txtprenom, javax.swing.GroupLayout.PREFERRED_SIZE, 39, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                        .addComponent(jLabel3))
+                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                        .addGroup(layout.createSequentialGroup()
+                                                .addGap(18, 18, Short.MAX_VALUE)
+                                                .addComponent(jLabel4)
+                                                .addGap(18, 18, 18))
+                                        .addGroup(layout.createSequentialGroup()
+                                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                                                .addComponent(txtemail)
+                                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)))
+                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                                        .addComponent(jLabel5)
+                                        .addComponent(txtmdp, javax.swing.GroupLayout.PREFERRED_SIZE, 33, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                .addGap(18, 18, 18)
+                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                                        .addComponent(jLabel6)
+                                        .addComponent(txtconfirme, javax.swing.GroupLayout.PREFERRED_SIZE, 33, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                .addGap(22, 22, 22)
+                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                                        .addComponent(jLabel8)
+                                        .addComponent(typeCompte, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                .addGap(18, 18, 18)
+                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                                        .addComponent(Annuler, javax.swing.GroupLayout.PREFERRED_SIZE, 44, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                        .addComponent(inscription, javax.swing.GroupLayout.PREFERRED_SIZE, 44, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(txtmsg1, javax.swing.GroupLayout.PREFERRED_SIZE, 23, javax.swing.GroupLayout.PREFERRED_SIZE))
+        );
+
+        pack();
+    }// </editor-fold>
+
+    private void txtnomActionPerformed(java.awt.event.ActionEvent evt) {
+        // TODO add your handling code here:
+    }
+
+    private void txtemailActionPerformed(java.awt.event.ActionEvent evt) {
+        // TODO add your handling code here:
+    }
+
+    private void inscriptionActionPerformed(java.awt.event.ActionEvent evt) {
+        // TODO add your handling code here:
+    }
+
+    private void AnnulerActionPerformed(java.awt.event.ActionEvent evt) {
+        dispose(); // Ferme la fenêtre d'inscription
+        new Accueil().setVisible(true); // Redirige vers la page de connexion
+
+    }
+
+    private void typeCompteActionPerformed(java.awt.event.ActionEvent evt) {
+        // TODO add your handling code here:
+    }
+
+    /**
+     * @param args the command line arguments
+     */
+    public static void main(String args[]) {
+        /* Set the Nimbus look and feel */
+        //<editor-fold defaultstate="collapsed" desc=" Look and feel setting code (optional) ">
+        /* If Nimbus (introduced in Java SE 6) is not available, stay with the default look and feel.
+         * For details see http://download.oracle.com/javase/tutorial/uiswing/lookandfeel/plaf.html
+         */
+        try {
+            for (javax.swing.UIManager.LookAndFeelInfo info : javax.swing.UIManager.getInstalledLookAndFeels()) {
+                if ("Nimbus".equals(info.getName())) {
+                    javax.swing.UIManager.setLookAndFeel(info.getClassName());
+                    break;
+                }
+            }
+        } catch (ClassNotFoundException ex) {
+            java.util.logging.Logger.getLogger(Register.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+        } catch (InstantiationException ex) {
+            java.util.logging.Logger.getLogger(Register.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+        } catch (IllegalAccessException ex) {
+            java.util.logging.Logger.getLogger(Register.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+        } catch (javax.swing.UnsupportedLookAndFeelException ex) {
+            java.util.logging.Logger.getLogger(Register.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+        }
+        //</editor-fold>
+
+        /* Create and display the form */
+        java.awt.EventQueue.invokeLater(new Runnable() {
+            public void run() {
+                new Register().setVisible(true);
+            }
+        });
+    }
+
+    // Variables declaration - do not modify
+    private javax.swing.JButton Annuler;
+    private javax.swing.JButton inscription;
+    private javax.swing.JLabel jLabel1;
+    private javax.swing.JLabel jLabel2;
+    private javax.swing.JLabel jLabel3;
+    private javax.swing.JLabel jLabel4;
+    private javax.swing.JLabel jLabel5;
+    private javax.swing.JLabel jLabel6;
+    private javax.swing.JLabel txtmsg1;
+    private javax.swing.JLabel jLabel8;
+    private javax.swing.JPasswordField txtconfirme;
+    private javax.swing.JTextField txtemail;
+    private javax.swing.JPasswordField txtmdp;
+    private javax.swing.JTextField txtnom;
+    private javax.swing.JTextField txtprenom;
+    private javax.swing.JComboBox<String> typeCompte;
+    // End of variables declaration
+}
+//

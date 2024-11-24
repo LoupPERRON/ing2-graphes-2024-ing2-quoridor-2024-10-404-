@@ -1,0 +1,79 @@
+package DAO;
+
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
+
+import Modele.Medecin;
+
+public class PatientDAO {
+    private Connection connection;
+    private DbConfigDAO dbInstance;
+
+    /*public PatientDAO(Connection connection) {
+        dbInstance = DbConfigDAO.getInstance();
+        try {
+            this.connection = dbInstance.getConnection();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }*/
+
+    // Méthode pour ajouter un patient dans la base de données
+    public boolean addPatient(Medecin patient) {
+        String sql = "INSERT INTO patients (nom, prenom, sexe, date_naissance) VALUES (?, ?, ?, ?)";
+        try {
+            PreparedStatement preparedStatement = connection.prepareStatement(sql);
+            preparedStatement.setString(1, patient.getNom());
+            preparedStatement.setString(2, patient.getPrenom());
+            preparedStatement.setString(3, patient.getSpecialites());
+            preparedStatement.setString(4, patient.getId_salle());
+            int rowsAffected = preparedStatement.executeUpdate();
+            return rowsAffected > 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    // Méthode pour récupérer tous les patients de la base de données
+    public List<Medecin> getAllPatients() {
+        List<Medecin> patients = new ArrayList<>();
+        String query = "SELECT * FROM patients";
+        try {
+            PreparedStatement preparedStatement = connection.prepareStatement(query);
+            ResultSet resultSet = preparedStatement.executeQuery();
+            while (resultSet.next()) {
+                int id = resultSet.getInt("id");
+                String nom = resultSet.getString("nom");
+                String prenom = resultSet.getString("prenom");
+                String sexe = resultSet.getString("sexe");
+                String dateNaissance = resultSet.getString("date_naissance");
+                Medecin patient = new Medecin(id, nom, prenom, sexe, dateNaissance);
+                patients.add(patient);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return patients;
+    }
+
+    // Méthode pour supprimer un patient de la base de données
+    public boolean deletePatient(int id) {
+        String query = "DELETE FROM patients WHERE id = ?";
+        try {
+            PreparedStatement preparedStatement = connection.prepareStatement(query);
+            preparedStatement.setInt(1, id);
+            int rowsAffected = preparedStatement.executeUpdate();
+            return rowsAffected > 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+}
+//
+

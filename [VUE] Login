@@ -1,0 +1,135 @@
+package Vue.Connexion;
+
+import DAO.DbConfigDAO;
+import Vue.Admin.admin;
+import Vue.Medecin.medecin;
+import Vue.Patient.patient;
+
+import java.lang.*;
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.*;
+import java.util.HashMap;
+import java.util.Map;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+
+public class Login extends JFrame  {
+
+    PreparedStatement pst;
+    ResultSet rs;
+    private JTextField txtemail;
+    private JPasswordField txtpassword;
+
+    private Map<String, String> Utilisateurs = new HashMap<>();
+
+    public Login() {
+        super("Connexion");
+
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setSize(400, 300);
+        setLocationRelativeTo(null);
+
+        JPanel panel = new JPanel(new GridLayout(4, 2));
+        getContentPane().add(panel);
+
+        JLabel emailLabel = new JLabel("Email:");
+        panel.add(emailLabel);
+
+        txtemail = new JTextField();
+        panel.add(txtemail);
+
+        JLabel passwordLabel = new JLabel("Password:");
+        panel.add(passwordLabel);
+
+        txtpassword = new JPasswordField();
+        panel.add(txtpassword);
+
+        JButton loginButton = new JButton("Se connecter");
+        loginButton.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                try {
+                    if (txtemail.getText().isEmpty() || String.valueOf(txtpassword.getPassword()).isEmpty()) {
+                        JOptionPane.showMessageDialog(Login.this, "Champs invalide!"); // Also fixed missing comma here
+                    }
+                    else {
+                        DbConfigDAO conf = new DbConfigDAO(); //connexion a la base de donnees
+                        try (Connection conn = conf.getConnection();// Get connection
+                        PreparedStatement pst=conn.prepareStatement("SELECT type_compte FROM Utilisateurs WHERE email= ? AND password=? "))
+                        {
+                        pst.setString(1, txtemail.getText());
+                        pst.setString(2, txtpassword.getText());
+                        try (ResultSet rs= pst.executeQuery()) {
+                            if (!rs.isBeforeFirst()){
+                                JOptionPane.showMessageDialog(Login.this, "Compte invalide !");
+                                txtemail.setText("");
+                                txtpassword.setText("");
+                            } else //les donnes existent et envoie au menu
+                            {
+                                rs.next(); // Move to the first row
+                                String userType = rs.getString("type_compte");
+                                Login.this.dispose();
+                                switch (userType) {
+                                    case "patient":
+                                        new patient().setVisible(true);
+                                        String email = txtemail.getText();
+                                        String password = new String(txtpassword.getPassword());
+
+                                        break;
+                                    case "medecin":
+                                        new medecin().setVisible(true);
+
+                                        // Nouvelle instance de la fenêtre du médecin
+                                        medecin medecinWindow = new medecin();
+
+                                        // Passer l'email et le mot de passe à la fenêtre du médecin
+                                        medecinWindow.setEmail(txtemail.getText());
+                                        medecinWindow.setPassword(new String(txtpassword.getPassword()));
+
+                                        // Afficher la fenêtre du médecin
+                                        medecinWindow.setVisible(true);
+
+                                        break;
+                                    case "administrateur":
+                                        new admin().setVisible(true);
+                                        break;
+                                    default:
+                                        JOptionPane.showMessageDialog(Login.this, "Type de compte non reconnu!");
+                                }
+                            }
+                        }
+                        }
+                    }
+                } catch (Exception exception) {
+                    exception.printStackTrace();
+                    JOptionPane.showMessageDialog(Login.this, "Erreur lors de la connexion: " + exception.getMessage());
+                }
+            }
+        });
+
+        panel.add(loginButton);  // Ajout du bouton au panel
+
+
+        JButton cancelButton = new JButton("Annuler");
+        cancelButton.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                dispose(); // Ferme la fenêtre d'inscription
+                new Accueil().setVisible(true); // Redirige vers la page de connexion
+            }
+        });
+        panel.add(cancelButton);
+    }
+
+
+
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(new Runnable() {
+            public void run() {
+                new Login();
+            }
+        });
+    }
+        }
+
+

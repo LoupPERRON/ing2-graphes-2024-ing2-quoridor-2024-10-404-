@@ -1,0 +1,54 @@
+package Modele;
+
+import java.util.ArrayList;
+import java.util.List;
+
+public class Medecin extends Utilisateurs {
+    private String Specialites;
+    private String id_salle;
+    private List<RendezVous> rendezVous;
+
+    public Medecin(int id_utilisateur, String nom, String prenom, String phone, String email, String password, String typeCompte, String Specialites, String id_salle) {
+        super(id_utilisateur, nom, prenom, phone, email, password, typeCompte);
+        this.Specialites = Specialites;
+        this.id_salle = id_salle;
+        this.rendezVous = new ArrayList<>();
+    }
+
+    public Medecin(int id, String nom, String prenom, String Specialites, String id_salle) {
+    }
+
+    public Medecin(String nom, String prenom, String Specialites, String id_salle) {
+    }
+
+    public List<RendezVous> getAllRendezVous() {
+        return this.rendezVous;
+    }
+
+    public void ajouterRendezVous(RendezVous rendezVous) {
+        this.rendezVous.add(rendezVous);
+    }
+    public boolean annulerRendezVous(RendezVous rendezVous) {
+        return this.rendezVous.remove(rendezVous);
+    }
+
+    public List<RendezVous> getRendezVous() {
+        return rendezVous;
+    }
+    public String getSpecialites() {
+        return Specialites;
+    }
+
+    public void setSpecialites(String specialites) {
+        this.Specialites = specialites;
+    }
+
+    public String getId_salle() {
+        return id_salle
+    }
+
+    public void setId_salle(String id_salle) {
+        this.id_salle = id_salle;
+    }
+}
+

@@ -1,0 +1,42 @@
+
+package Controleur;
+import Modele.Utilisateurs;
+import DAO.UtilisateursDAO;
+
+public class UtilisateurController {
+
+    private UtilisateursDAO utilisateurDAO;
+
+    public UtilisateurController() {
+        utilisateurDAO = new UtilisateursDAO();
+    }
+
+    public boolean login(String email, String password) {
+        try {
+            Utilisateurs utilisateur = utilisateurDAO.getByEmail(email);
+            if (utilisateur != null && utilisateur.getPassword().equals(password)) {
+                // Connexion réussie
+                return true;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        // Connexion échouée
+        return false;
+    }
+
+    public boolean register(Utilisateurs utilisateur) {
+        try {
+            if (!utilisateurDAO.isExist(utilisateur.getEmail(),utilisateur.getPassword())) {
+                // L'utilisateur n'existe pas, donc on peut l'ajouter
+                utilisateurDAO.add(utilisateur);
+                return true; // Enregistrement réussi
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        // Enregistrement échoué (utilisateur existe déjà ou erreur)
+        return false;
+    }
+}
+/

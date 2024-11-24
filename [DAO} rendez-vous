@@ -1,0 +1,95 @@
+package DAO;
+import Modele.RendezVous;
+
+import java.sql.*;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+
+public class RendezVousDAO {
+    private Connection connection;
+
+    public RendezVousDAO(Connection connection) {
+        this.connection = connection;
+    }
+
+    // Méthode pour ajouter un rendez-vous dans la base de données
+    public void ajouterRendezVous(RendezVous rendezVous) throws SQLException {
+        String query = "INSERT INTO RendezVous (date, motif, idMedecin, idPatient) VALUES (?, ?, ?, ?)";
+        try (PreparedStatement pstmt = connection.prepareStatement(query, Statement.RETURN_GENERATED_KEYS)) {
+            pstmt.setObject(1, rendezVous.getDate());
+            pstmt.setString(2, rendezVous.getMotif());
+            pstmt.setInt(3, rendezVous.getIdMedecin());
+            pstmt.setInt(4, rendezVous.getIdPatient());
+            pstmt.executeUpdate();
+            ResultSet rs = pstmt.getGeneratedKeys();
+            if (rs.next()) {
+                rendezVous.setIdRendezVous(rs.getInt(1));
+            }
+        }
+    }
+
+    // Méthode pour récupérer tous les rendez-vous de la base de données
+    public List<RendezVous> ToutRendezVous() throws SQLException {
+        List<RendezVous> rendezVousList = new ArrayList<>();
+        String query = "SELECT * FROM RendezVous";
+        try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+            ResultSet rs = pstmt.executeQuery();
+            while (rs.next()) {
+                int idRendezVous = rs.getInt("idRendezVous");
+                String date = rs.getString("date");
+                String motif = rs.getString("motif");
+                int idMedecin = rs.getInt("idMedecin");
+                int idPatient = rs.getInt("idPatient");
+                RendezVous rendezVous = new RendezVous(idRendezVous, date, motif, idMedecin, idPatient);
+                rendezVousList.add(rendezVous);
+            }
+        }
+        return rendezVousList;
+    }
+
+    // Méthode pour récupérer les rendez-vous d'un patient donné
+    public List<RendezVous> PatientRendezVousByPatient(int idPatient) throws SQLException {
+        List<RendezVous> rendezVousList = new ArrayList<>();
+        String query = "SELECT * FROM RendezVous WHERE idPatient = ?";
+        try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+            pstmt.setInt(1, idPatient);
+            ResultSet rs = pstmt.executeQuery();
+            while (rs.next()) {
+                int idRendezVous = rs.getInt("idRendezVous");
+                String date = rs.getString("date");
+                String motif = rs.getString("motif");
+                int idMedecin = rs.getInt("idMedecin");
+                RendezVous rendezVous = new RendezVous(idRendezVous, date, motif, idMedecin, idPatient);
+                rendezVousList.add(rendezVous);
+            }
+        }
+        return rendezVousList;
+    }
+
+    public boolean modifierRendezVous(RendezVous rendezVous) {
+        String query = "UPDATE Rdv SET date = ?, motif = ?, idMedecin = ?, idPatient = ? WHERE idRendezVous = ?";
+        try (PreparedStatement pst = connection.prepareStatement(query)) {
+            pst.setTimestamp(1, Timestamp.valueOf(rendezVous.getDate()));
+            pst.setString(2, rendezVous.getMotif());
+            pst.setInt(3, rendezVous.getIdMedecin());
+            pst.setInt(4, rendezVous.getIdPatient());
+            pst.setInt(5, rendezVous.getIdRendezVous());
+            int rowsUpdated = pst.executeUpdate();
+            return rowsUpdated > 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    // Méthode pour supprimer un rendez-vous de la base de données
+    public void SupprimerRendezVous(int idRendezVous) throws SQLException {
+        String query = "DELETE FROM RendezVous WHERE idRendezVous = ?";
+        try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+            pstmt.setInt(1, idRendezVous);
+            pstmt.executeUpdate();
+        }
+    }
+}
+//

@@ -1,0 +1,537 @@
+package Vue.Admin; 
+
+import DAO.DbConfigDAO;
+
+import javax.swing.*;
+import javax.swing.table.DefaultTableModel;
+import java.sql.*;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+
+
+public class Creneaux extends javax.swing.JFrame {
+
+    PreparedStatement pst;
+    ResultSet rs;
+    Connection con;
+    public Creneaux() {
+        super("Historique des creneaux");
+        initComponents();
+        table();
+    }
+
+
+    @SuppressWarnings("unchecked")
+    // <editor-fold defaultstate="collapsed" desc="Generated Code">
+    private void initComponents() {
+
+        jPanel1 = new javax.swing.JPanel();
+        jScrollPane1 = new javax.swing.JScrollPane();
+        jTable1 = new javax.swing.JTable();
+        jPanel2 = new javax.swing.JPanel();
+        ajouter = new javax.swing.JButton();
+        modifier = new javax.swing.JButton();
+        supprimer = new javax.swing.JButton();
+        actualiser = new javax.swing.JButton();
+        menu = new javax.swing.JButton();
+        jLabel1 = new javax.swing.JLabel();
+        jLabel2 = new javax.swing.JLabel();
+        jLabel3 = new javax.swing.JLabel();
+        txtdate = new javax.swing.JTextField();
+        jLabel5 = new javax.swing.JLabel();
+        jLabel6 = new javax.swing.JLabel();
+        txtfin = new javax.swing.JTextField();
+        txtdebut = new javax.swing.JTextField();
+        txtestlibre = new javax.swing.JComboBox<>();
+        jLabel4 = new javax.swing.JLabel();
+        txtmed = new javax.swing.JTextField();
+
+        setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
+
+        jTable1.setModel(new javax.swing.table.DefaultTableModel(
+                new Object [][] {
+                        {null, null, null, null},
+                        {null, null, null, null},
+                        {null, null, null, null},
+                        {null, null, null, null}
+                },
+                new String [] {
+
+                }
+        ));
+        jScrollPane1.setViewportView(jTable1);
+
+        jPanel2.setBorder(javax.swing.BorderFactory.createBevelBorder(javax.swing.border.BevelBorder.RAISED));
+
+        ajouter.setFont(new java.awt.Font("Helvetica Neue", 0, 14)); // NOI18N
+        ajouter.setText("Ajouter");
+        ajouter.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButton1ActionPerformed(evt);
+                int idMed = Integer.parseInt(txtmed.getText());
+                String dateStr = txtdate.getText();
+                String heureDebutStr = txtdebut.getText();
+                String heureFinStr = txtfin.getText();
+                String estLibre = (String) txtestlibre.getSelectedItem();
+
+
+                // Vérifiez si l'ID du médecin existe dans la table des médecins
+                boolean medecinExiste = false;
+                String sqlVerification = "SELECT COUNT(*) AS count FROM Medecins WHERE idMedecin = ?";
+                DbConfigDAO conf = null;
+                try (Connection conn = conf.getConnection();
+                     PreparedStatement pstVerification = conn.prepareStatement(sqlVerification)) {
+                    pstVerification.setInt(1, idMed);
+                    try (ResultSet rs = pstVerification.executeQuery()) {
+                        if (rs.next()) {
+                            int count = rs.getInt("count");
+                            medecinExiste = count > 0;
+                        }
+                    }
+                } catch (SQLException | ClassNotFoundException ex) {
+                    ex.printStackTrace();
+                    JOptionPane.showMessageDialog(null, "Erreur lors de la vérification de l'ID du médecin : " + ex.getMessage(), "Erreur", JOptionPane.ERROR_MESSAGE);
+                }
+
+                if (!medecinExiste) {
+                    JOptionPane.showMessageDialog(null, "L'ID du médecin sélectionné n'existe pas dans la table des médecins.", "Erreur", JOptionPane.ERROR_MESSAGE);
+                    return; // Sortez de la méthode sans ajouter le créneau
+                }
+
+                try {
+                    if (dateStr.isEmpty()  || heureDebutStr.isEmpty() || heureFinStr.isEmpty()) {
+                        JOptionPane.showMessageDialog(null, "Veuillez remplir tous les champs.");
+                        return;
+                    }
+
+                    // Convertir les chaînes de date et d'heure en objets java.util.Date
+                    SimpleDateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy");
+                    SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm");
+                    java.util.Date parsedDate = dateFormat.parse(dateStr);
+                    java.util.Date parsedHeureDebut = timeFormat.parse(heureDebutStr);
+                    java.util.Date parsedHeureFin = timeFormat.parse(heureFinStr);
+
+                    // Convertir les objets java.util.Date en objets java.sql.Date et java.sql.Time
+                    java.sql.Date date = new java.sql.Date(parsedDate.getTime());
+                    java.sql.Time heureDebut = new java.sql.Time(parsedHeureDebut.getTime());
+                    java.sql.Time heureFin = new java.sql.Time(parsedHeureFin.getTime());
+
+                    conf = new DbConfigDAO();
+                    try (Connection conn = conf.getConnection();
+                         PreparedStatement pst = conn.prepareStatement("INSERT INTO Creneaux (idMedecin,date, debut, fin, est_libre) VALUES (?, ?, ?, ?, ?)")) {
+
+                        pst.setInt(1, idMed);
+                        pst.setDate(2, date);
+                        pst.setTime(3, heureDebut);
+                        pst.setTime(4, heureFin);
+                        pst.setString(5, estLibre);
+
+                        pst.executeUpdate();
+                        table();
+                        actualiserTableau();
+                        JOptionPane.showMessageDialog(null, "Créneau ajouté avec succès.");
+                    }
+                } catch (SQLException | ClassNotFoundException | ParseException ex) {
+                    ex.printStackTrace();
+                    JOptionPane.showMessageDialog(null, "Erreur lors de l'ajout du créneau : " + ex.getMessage(), "Erreur", JOptionPane.ERROR_MESSAGE);
+                }
+            }
+        });
+
+        modifier.setFont(new java.awt.Font("Helvetica Neue", 0, 14)); // NOI18N
+        modifier.setText("Modifier");
+        modifier.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButton2ActionPerformed(evt);
+                int selectedRow = jTable1.getSelectedRow();
+                if (selectedRow == -1) {
+                    JOptionPane.showMessageDialog(null, "Veuillez sélectionner un créneau à modifier.");
+                    return;
+                }
+                // Récupérer l'identifiant du créneau sélectionné
+                int idCreneau = Integer.parseInt(jTable1.getValueAt(selectedRow, 0).toString());
+
+                // Récupérer les nouvelles valeurs des champs de saisie
+                int newidMed = Integer.parseInt(txtmed.getText());
+                String nouvelleDate = txtdate.getText();
+                String nouvelleHeureDebut = txtdebut.getText();
+                String nouvelleHeureFin = txtfin.getText();
+                String nouvelEstLibre = (String) txtestlibre.getSelectedItem();
+
+                // Mettre à jour le tableau
+                jTable1.setValueAt(newidMed, selectedRow, 1);
+                jTable1.setValueAt(nouvelleDate, selectedRow, 2);
+                jTable1.setValueAt(nouvelleHeureDebut, selectedRow, 3);
+                jTable1.setValueAt(nouvelleHeureFin, selectedRow, 4);
+                jTable1.setValueAt(nouvelEstLibre, selectedRow, 5);
+
+                // Mettre à jour la base de données
+                DbConfigDAO conf = new DbConfigDAO();
+                String sqlUpdateCreneau = "UPDATE Creneaux SET idMedecin = ?, date = ?, debut = ?, fin = ?, est_libre = ? WHERE id = ?";
+                try (Connection conn = conf.getConnection();
+                     PreparedStatement pstUpdateCreneau = conn.prepareStatement(sqlUpdateCreneau)) {
+                    pstUpdateCreneau.setInt(1, newidMed);
+                    pstUpdateCreneau.setString(2, nouvelleDate);
+                    pstUpdateCreneau.setString(3, nouvelleHeureDebut);
+                    pstUpdateCreneau.setString(4, nouvelleHeureFin);
+                    pstUpdateCreneau.setString(5, nouvelEstLibre);
+                    pstUpdateCreneau.setInt(6, idCreneau);
+
+                    pstUpdateCreneau.executeUpdate();
+                    actualiserTableau();
+                    table();
+                    JOptionPane.showMessageDialog(null, "Créneau modifié avec succès.");
+                } catch (SQLException | ClassNotFoundException ex) {
+                    ex.printStackTrace();
+                    JOptionPane.showMessageDialog(null, "Erreur lors de la modification du créneau : " + ex.getMessage(), "Erreur", JOptionPane.ERROR_MESSAGE);
+                }
+            }
+
+
+        });
+
+        supprimer.setFont(new java.awt.Font("Helvetica Neue", 0, 14)); // NOI18N
+        supprimer.setText("Supprimer");
+        supprimer.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButton3ActionPerformed(evt);
+                // Récupérer l'index de la ligne sélectionnée dans votre JTable
+                int selectedRow = jTable1.getSelectedRow();
+                if (selectedRow == -1) {
+                    JOptionPane.showMessageDialog(null, "Veuillez sélectionner un créneau à supprimer.");
+                    return;
+                }
+
+                // Récupérer l'identifiant du créneau à partir de la ligne sélectionnée
+                int idCreneau = Integer.parseInt(jTable1.getValueAt(selectedRow, 0).toString());
+
+                DbConfigDAO conf = new DbConfigDAO();
+
+                // Supprimer le créneau de la table Creneaux
+                String sqlDeleteCreneau = "DELETE FROM Creneaux WHERE id = ?";
+                try (Connection conn = conf.getConnection();
+                     PreparedStatement pstDeleteCreneau = conn.prepareStatement(sqlDeleteCreneau)) {
+                    pstDeleteCreneau.setInt(1, idCreneau);
+                    pstDeleteCreneau.executeUpdate();
+
+                    actualiserTableau();
+                    table();
+                    JOptionPane.showMessageDialog(null, "Créneau supprimé avec succès.");
+                } catch (SQLException | ClassNotFoundException ex) {
+                    ex.printStackTrace();
+                    JOptionPane.showMessageDialog(null, "Erreur lors de la suppression du créneau.");
+                    return;
+                }
+            }
+        });
+
+        actualiser.setFont(new java.awt.Font("Helvetica Neue", 0, 14)); // NOI18N
+        actualiser.setText("Actualiser");
+        actualiser.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButton4ActionPerformed(evt);
+                txtdate.setText("");
+                txtdebut.setText("");
+                txtfin.setText("");
+                txtestlibre.getSelectedItem();
+                txtmed.setText("");
+                actualiserTableau();
+            }
+        });
+
+        menu.setFont(new java.awt.Font("Helvetica Neue", 0, 14)); // NOI18N
+        menu.setText("Menu");
+        menu.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButton5ActionPerformed(evt);
+                dispose();
+                new admin().setVisible(true);
+            }
+        });
+
+        javax.swing.GroupLayout jPanel2Layout = new javax.swing.GroupLayout(jPanel2);
+        jPanel2.setLayout(jPanel2Layout);
+        jPanel2Layout.setHorizontalGroup(
+                jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                        .addGroup(jPanel2Layout.createSequentialGroup()
+                                .addGap(31, 31, 31)
+                                .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
+                                        .addComponent(actualiser)
+                                        .addComponent(supprimer, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                        .addComponent(modifier, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                        .addComponent(ajouter, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                        .addGroup(jPanel2Layout.createSequentialGroup()
+                                                .addComponent(menu)
+                                                .addGap(10, 10, 10)))
+                                .addContainerGap(36, Short.MAX_VALUE))
+        );
+        jPanel2Layout.setVerticalGroup(
+                jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                        .addGroup(jPanel2Layout.createSequentialGroup()
+                                .addGap(17, 17, 17)
+                                .addComponent(ajouter)
+                                .addGap(26, 26, 26)
+                                .addComponent(modifier)
+                                .addGap(26, 26, 26)
+                                .addComponent(supprimer)
+                                .addGap(26, 26, 26)
+                                .addComponent(actualiser)
+                                .addGap(64, 64, 64)
+                                .addComponent(menu)
+                                .addContainerGap(66, Short.MAX_VALUE))
+        );
+
+        jLabel1.setFont(new java.awt.Font("Helvetica Neue", 0, 18)); // NOI18N
+        jLabel1.setText("CRENEAUX DISPONIBLES");
+
+        jLabel2.setFont(new java.awt.Font("Helvetica Neue", 0, 18)); // NOI18N
+        jLabel2.setText("Date :");
+
+        jLabel3.setFont(new java.awt.Font("Helvetica Neue", 0, 18)); // NOI18N
+        jLabel3.setText("Libre :");
+
+        txtdate.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                txtdateActionPerformed(evt);
+            }
+        });
+
+        jLabel5.setFont(new java.awt.Font("Helvetica Neue", 0, 18)); // NOI18N
+        jLabel5.setText("Heure de debut :");
+
+        jLabel6.setFont(new java.awt.Font("Helvetica Neue", 0, 18)); // NOI18N
+        jLabel6.setText("Heure de fin :");
+
+        txtestlibre.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Oui", "Non" }));
+
+        jLabel4.setFont(new java.awt.Font("Helvetica Neue", 0, 18)); // NOI18N
+        jLabel4.setText("Medecin :");
+
+        javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
+        jPanel1.setLayout(jPanel1Layout);
+        jPanel1Layout.setHorizontalGroup(
+                jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                        .addComponent(jScrollPane1)
+                        .addGroup(jPanel1Layout.createSequentialGroup()
+                                .addGap(22, 22, 22)
+                                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                        .addComponent(jLabel2, javax.swing.GroupLayout.PREFERRED_SIZE, 74, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                        .addComponent(jLabel3, javax.swing.GroupLayout.PREFERRED_SIZE, 61, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                        .addComponent(jLabel4, javax.swing.GroupLayout.PREFERRED_SIZE, 91, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                        .addComponent(txtdate)
+                                        .addComponent(txtestlibre, 0, 151, Short.MAX_VALUE)
+                                        .addComponent(txtmed))
+                                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                        .addGroup(jPanel1Layout.createSequentialGroup()
+                                                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                                        .addGroup(jPanel1Layout.createSequentialGroup()
+                                                                .addGap(29, 29, 29)
+                                                                .addComponent(jLabel5)
+                                                                .addGap(8, 8, 8))
+                                                        .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel1Layout.createSequentialGroup()
+                                                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                                                .addComponent(jLabel6)
+                                                                .addGap(28, 28, 28)))
+                                                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                                        .addComponent(txtfin)
+                                                        .addComponent(txtdebut))
+                                                .addGap(18, 18, 18))
+                                        .addGroup(jPanel1Layout.createSequentialGroup()
+                                                .addGap(29, 29, 29)
+                                                .addComponent(jLabel1, javax.swing.GroupLayout.PREFERRED_SIZE, 233, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 127, Short.MAX_VALUE)))
+                                .addComponent(jPanel2, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addGap(15, 15, 15))
+        );
+        jPanel1Layout.setVerticalGroup(
+                jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                        .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel1Layout.createSequentialGroup()
+                                .addGap(20, 20, 20)
+                                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                        .addGroup(jPanel1Layout.createSequentialGroup()
+                                                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                                        .addGroup(jPanel1Layout.createSequentialGroup()
+                                                                .addGap(65, 65, 65)
+                                                                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                                                                        .addComponent(jLabel2, javax.swing.GroupLayout.PREFERRED_SIZE, 31, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                                                        .addComponent(txtdate, javax.swing.GroupLayout.PREFERRED_SIZE, 31, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                                                        .addGroup(jPanel1Layout.createSequentialGroup()
+                                                                .addComponent(jLabel1, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                                                .addGap(34, 34, 34)
+                                                                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                                                                        .addComponent(jLabel5, javax.swing.GroupLayout.PREFERRED_SIZE, 31, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                                                        .addComponent(txtdebut, javax.swing.GroupLayout.PREFERRED_SIZE, 31, javax.swing.GroupLayout.PREFERRED_SIZE))))
+                                                .addGap(23, 23, 23)
+                                                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                                                        .addComponent(jLabel3, javax.swing.GroupLayout.PREFERRED_SIZE, 31, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                                        .addComponent(jLabel6, javax.swing.GroupLayout.PREFERRED_SIZE, 31, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                                        .addComponent(txtfin, javax.swing.GroupLayout.PREFERRED_SIZE, 31, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                                        .addComponent(txtestlibre, javax.swing.GroupLayout.PREFERRED_SIZE, 33, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                                .addGap(31, 31, 31)
+                                                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                                                        .addComponent(jLabel4, javax.swing.GroupLayout.DEFAULT_SIZE, 31, Short.MAX_VALUE)
+                                                        .addComponent(txtmed)))
+                                        .addComponent(jPanel2, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 344, Short.MAX_VALUE))
+        );
+
+        javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
+        getContentPane().setLayout(layout);
+        layout.setHorizontalGroup(
+                layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                        .addComponent(jPanel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+        );
+        layout.setVerticalGroup(
+                layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                        .addComponent(jPanel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+        );
+
+        pack();
+    }// </editor-fold>
+
+    private void txtdateActionPerformed(java.awt.event.ActionEvent evt) {
+        // TODO add your handling code here:
+    }
+
+    private void jButton5ActionPerformed(java.awt.event.ActionEvent evt) {
+        dispose();
+        new admin().setVisible(true);
+    }
+
+    private void jButton4ActionPerformed(java.awt.event.ActionEvent evt) {
+        // TODO add your handling code here:
+    }
+
+    private void jButton3ActionPerformed(java.awt.event.ActionEvent evt) {
+        // TODO add your handling code here:
+    }
+
+    private void jButton2ActionPerformed(java.awt.event.ActionEvent evt) {
+        // TODO add your handling code here:
+    }
+
+    private void jButton1ActionPerformed(java.awt.event.ActionEvent evt) {
+        // TODO add your handling code here:
+    }
+
+    public void table(){
+        String []creneau = {"ID","ID Medecin","Date","Heure de debut","Heure de fin","Libre"};
+        String [] montrer = new String[7];
+
+        DefaultTableModel model = new DefaultTableModel(null,creneau);
+
+        String sql = "SELECT * FROM Creneaux  ";
+
+
+        try {
+            DbConfigDAO conf = new DbConfigDAO();
+            Connection conn = conf.getConnection();
+
+            Statement st = conn.createStatement();
+            rs = st.executeQuery(sql);
+
+            while(rs.next()){
+                montrer[0] = rs.getString("id");
+                montrer[1] = rs.getString("idMedecin");
+                montrer[2] = rs.getString("date");
+                montrer[3] = rs.getString("debut");
+                montrer[4] = rs.getString("fin");
+                montrer[5] = rs.getString("est_libre");
+                model.addRow(montrer);
+            }
+            jTable1.setModel(model);
+            conn.close();
+        }
+        catch (Exception e){
+            e.printStackTrace();
+
+        }
+    }
+
+    private void actualiserTableau() {
+        String[] entetes = {"ID","ID Medecin","Date","Heure de debut","Heure de fin","Libre"};
+        DefaultTableModel model = new DefaultTableModel(null, entetes);
+        DbConfigDAO conf = new DbConfigDAO();
+
+        String sql = "SELECT id,idMedecin, date, debut, fin, est_libre FROM Creneaux";
+
+        try (Connection conn = conf.getConnection();
+             PreparedStatement pst = conn.prepareStatement(sql);
+             ResultSet rs = pst.executeQuery()) {
+
+            while (rs.next()) {
+                String[] row = new String[7];
+                row[0] = rs.getString("id");
+                row[1] = rs.getString("idMedecin");
+                row[2] = rs.getString("date");
+                row[3] = rs.getString("debut");
+                row[4] = rs.getString("fin");
+                row[5] = rs.getString("est_libre");
+
+                model.addRow(row);
+            }
+        } catch (SQLException | ClassNotFoundException ex) {
+            ex.printStackTrace();
+            JOptionPane.showMessageDialog(null, "Erreur lors de l'actualisation du tableau.");
+        }
+
+        jTable1.setModel(model);
+    }
+
+
+
+    public static void main(String args[]) {
+
+        try {
+            for (javax.swing.UIManager.LookAndFeelInfo info : javax.swing.UIManager.getInstalledLookAndFeels()) {
+                if ("Nimbus".equals(info.getName())) {
+                    javax.swing.UIManager.setLookAndFeel(info.getClassName());
+                    break;
+                }
+            }
+        } catch (ClassNotFoundException ex) {
+            java.util.logging.Logger.getLogger(Creneaux.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+        } catch (InstantiationException ex) {
+            java.util.logging.Logger.getLogger(Creneaux.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+        } catch (IllegalAccessException ex) {
+            java.util.logging.Logger.getLogger(Creneaux.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+        } catch (javax.swing.UnsupportedLookAndFeelException ex) {
+            java.util.logging.Logger.getLogger(Creneaux.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+        }
+        //</editor-fold>
+
+        /* Create and display the form */
+        java.awt.EventQueue.invokeLater(new Runnable() {
+            public void run() {
+                new Creneaux().setVisible(true);
+            }
+        });
+    }
+
+    // Variables declaration - do not modify
+    private javax.swing.JButton ajouter;
+    private javax.swing.JButton modifier;
+    private javax.swing.JButton supprimer;
+    private javax.swing.JButton actualiser;
+    private javax.swing.JButton menu;
+    private javax.swing.JLabel jLabel1;
+    private javax.swing.JLabel jLabel2;
+    private javax.swing.JLabel jLabel3;
+    private javax.swing.JLabel jLabel4;
+    private javax.swing.JLabel jLabel5;
+    private javax.swing.JLabel jLabel6;
+    private javax.swing.JPanel jPanel1;
+    private javax.swing.JPanel jPanel2;
+    private javax.swing.JScrollPane jScrollPane1;
+    private javax.swing.JTable jTable1;
+    private javax.swing.JTextField txtdate;
+    private javax.swing.JTextField txtdebut;
+    private javax.swing.JComboBox<String> txtestlibre;
+    private javax.swing.JTextField txtfin;
+    private javax.swing.JTextField txtmed;
+    // End of variables declaration
+}
+//

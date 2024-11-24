@@ -1,0 +1,74 @@
+package DAO;
+import Modele.Creneau;
+
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+
+public class CreneauDAO {
+    private Connection connection;
+
+    // Constructeur prenant une connexion à la base de données
+    public CreneauDAO(Connection connection) {
+        this.connection = connection;
+    }
+
+    // Méthode pour ajouter un créneau dans la base de données
+    public void ajouterCreneau(Creneau creneau) throws SQLException {
+        String sql = "INSERT INTO Creneaux (date, debut, fin, est_libre) VALUES (?, ?, ?, ?)";
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setObject(1, creneau.getDate());
+            statement.setObject(2, creneau.getDebut());
+            statement.setObject(3, creneau.getFin());
+            statement.setBoolean(4, creneau.isEstLibre());
+            statement.executeUpdate();
+        }
+    }
+
+    // Méthode pour récupérer tous les créneaux disponibles dans la base de données
+    public List<Creneau> recupererTousCreneaux() throws SQLException {
+        List<Creneau> creneaux = new ArrayList<>();
+        String sql = "SELECT * FROM Creneaux";
+        try (PreparedStatement statement = connection.prepareStatement(sql);
+             ResultSet resultSet = statement.executeQuery()) {
+            while (resultSet.next()) {
+                int id = resultSet.getInt("id");
+                LocalDateTime date = resultSet.getObject("date", LocalDateTime.class);
+                LocalDateTime debut = resultSet.getObject("debut", LocalDateTime.class);
+                LocalDateTime fin = resultSet.getObject("fin", LocalDateTime.class);
+                boolean estLibre = resultSet.getBoolean("est_libre");
+                Creneau creneau = new Creneau(id, date, debut, fin, estLibre);
+                creneaux.add(creneau);
+            }
+        }
+        return creneaux;
+    }
+
+    // Méthode pour mettre à jour un créneau dans la base de données
+    public void mettreAJourCreneau(Creneau creneau) throws SQLException {
+        String sql = "UPDATE Creneaux SET date = ?, debut = ?, fin = ?, est_libre = ? WHERE id = ?";
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setObject(1, creneau.getDate());
+            statement.setObject(2, creneau.getDebut());
+            statement.setObject(3, creneau.getFin());
+            statement.setBoolean(4, creneau.isEstLibre());
+            statement.setInt(5, creneau.getId());
+            statement.executeUpdate();
+        }
+    }
+
+    // Méthode pour supprimer un créneau de la base de données
+    public void supprimerCreneau(int id) throws SQLException {
+        String sql = "DELETE FROM Creneaux WHERE id = ?";
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setInt(1, id);
+            statement.executeUpdate();
+        }
+    }
+}
+
+//DAO
